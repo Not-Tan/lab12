@@ -5,10 +5,11 @@ This lab provides hands-on experience with three progressively complex chat appl
 
 ## 🎯 Learning Objectives
 By the end of this lab, you will understand:
-- How to integrate with LLM APIs using LiteLLM
-- Implementation of tool calling for web search
-- Building RAG systems with FAISS vector search
-- Best practices for AI application development
+- **Streamlit fundamentals**: Chat interfaces, session state, and reactive programming
+- **LLM API integration**: Using LiteLLM for multiple provider support
+- **Tool calling implementation**: Automatic web search integration
+- **RAG systems**: Vector embeddings and document retrieval with FAISS
+- **Best practices**: Error handling, optimization, and AI application development
 
 ---
 
@@ -18,6 +19,7 @@ By the end of this lab, you will understand:
 CS203_w12_lab/
 ├── app.py                 # Main navigation hub
 ├── src/                   # Source code for applications
+│   ├── echo_bot.py        # Task 0: Basic Streamlit chat interface
 │   ├── basic_chat.py      # Basic LLM chat interface
 │   ├── chat_with_search.py # Chat with web search tools
 │   └── chat_with_rag.py   # Chat with document retrieval
@@ -64,7 +66,210 @@ streamlit run app.py
 
 ---
 
-## 📚 Application Deep Dive
+## �‍♂️ Task 0: Understanding Streamlit Basics with Echo Bot
+
+### 🎯 Learning Focus
+Before diving into LLM applications, let's understand the fundamentals of Streamlit chat interfaces. This task introduces you to:
+- Streamlit chat components
+- Session state management
+- Basic user interaction patterns
+- Chat message flow
+
+### 📝 The Echo Bot (`src/echo_bot.py`)
+
+The Echo Bot is the simplest possible chat application - it just repeats back whatever you type. While simple, it demonstrates all the core concepts you'll need for building AI chat applications.
+
+#### Complete Code Analysis
+
+```python
+import streamlit as st
+
+st.title("Echo Bot")
+
+# Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Display chat messages from history on app rerun
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# React to user input
+if prompt := st.chat_input("What is up?"):
+    # Display user message in chat message container
+    st.chat_message("user").markdown(prompt)
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    response = f"Echo: {prompt}"
+    # Display assistant response in chat message container
+    with st.chat_message("assistant"):
+        st.markdown(response)
+    # Add assistant response to chat history
+    st.session_state.messages.append({"role": "assistant", "content": response})
+```
+
+### 🔍 Step-by-Step Breakdown
+
+#### 1. **App Title**
+```python
+st.title("Echo Bot")
+```
+- Sets the main heading of your web application
+- Appears at the top of the page
+
+#### 2. **Session State Initialization**
+```python
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+```
+
+**Why is this critical?**
+- Streamlit reruns your entire script every time a user interacts with it
+- Without session state, your chat history would disappear on each rerun
+- `st.session_state` persists data between reruns
+- We initialize an empty list to store chat messages
+
+#### 3. **Display Chat History**
+```python
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+```
+
+**What's happening:**
+- Loop through all stored messages
+- `st.chat_message(role)` creates a chat bubble with proper styling
+- `role` can be "user" or "assistant" (determines left/right alignment and styling)
+- `st.markdown()` renders the message content
+
+#### 4. **Handle User Input**
+```python
+if prompt := st.chat_input("What is up?"):
+```
+
+**The Walrus Operator (`:=`):**
+- This is Python 3.8+ syntax for assignment expressions
+- Equivalent to: `prompt = st.chat_input("What is up?"); if prompt:`
+- `st.chat_input()` creates a text input box at the bottom of the screen
+- Returns the user's input when they press Enter, or `None` if no input
+
+#### 5. **Process and Display Messages**
+```python
+# Display user message
+st.chat_message("user").markdown(prompt)
+st.session_state.messages.append({"role": "user", "content": prompt})
+
+# Generate and display response
+response = f"Echo: {prompt}"
+with st.chat_message("assistant"):
+    st.markdown(response)
+st.session_state.messages.append({"role": "assistant", "content": response})
+```
+
+**Message Flow:**
+1. Display user message immediately (for instant feedback)
+2. Store user message in session state (for persistence)
+3. Generate response (in this case, just echo the input)
+4. Display response in assistant chat bubble
+5. Store response in session state
+
+### 🛠 Hands-On Exercise 0.1: Run the Echo Bot
+
+1. **Launch the Echo Bot:**
+   ```bash
+   streamlit run src/echo_bot.py
+   ```
+
+2. **Test the functionality:**
+   - Type "Hello World" and press Enter
+   - Try typing multiple messages
+   - Refresh the page - notice the messages persist!
+
+3. **Experiment with modifications:**
+   - Change the title to "My First Chat Bot"
+   - Modify the response format (e.g., `f"You said: {prompt}"`)
+   - Add emoji to responses
+
+### 🧪 Hands-On Exercise 0.2: Enhance the Echo Bot
+
+**Task**: Add the following features to understand Streamlit components better:
+
+#### A. Add a Clear Chat Button
+```python
+# Add this after the title
+if st.button("Clear Chat History"):
+    st.session_state.messages = []
+    st.rerun()  # Refresh the app to show cleared chat
+```
+
+#### B. Add Message Counter
+```python
+# Add this in the sidebar
+st.sidebar.write(f"Total messages: {len(st.session_state.messages)}")
+```
+
+#### C. Add Response Variations
+```python
+import random
+
+# Replace the simple echo response with:
+responses = [
+    f"Echo: {prompt}",
+    f"You said: {prompt}",
+    f"I heard: {prompt}",
+    f"Repeating: {prompt}"
+]
+response = random.choice(responses)
+```
+
+### 🔍 Key Concepts Learned
+
+#### 1. **Streamlit's Reactive Model**
+- Your script runs from top to bottom on every interaction
+- State management is crucial for persistent data
+- UI updates happen automatically when variables change
+
+#### 2. **Chat Interface Components**
+- `st.chat_input()`: Creates input field for user messages
+- `st.chat_message(role)`: Creates styled chat bubbles
+- `st.markdown()`: Renders text with formatting support
+
+#### 3. **Session State Pattern**
+```python
+# Initialize
+if "key" not in st.session_state:
+    st.session_state.key = default_value
+
+# Use
+st.session_state.key.append(new_item)
+
+# Display
+for item in st.session_state.key:
+    st.write(item)
+```
+
+### 🚀 Ready for Real AI?
+
+Now that you understand:
+- ✅ How Streamlit chat interfaces work
+- ✅ Session state management
+- ✅ Message flow and persistence
+- ✅ User input handling
+
+You're ready to move on to **Application 1: Basic Chat** where we'll replace the simple echo with actual AI responses!
+
+### 💡 Pro Tips for Streamlit Development
+
+1. **Use `st.rerun()`** when you need to refresh the app programmatically
+2. **Session state keys** should be descriptive (e.g., `"chat_messages"` not `"msgs"`)
+3. **Always initialize session state** before using it
+4. **Use `with st.chat_message():`** for multi-line content in chat bubbles
+
+---
+
+## �📚 Application Deep Dive
 
 ## Application 1: Basic Chat (`src/basic_chat.py`)
 
@@ -509,10 +714,11 @@ rag = SimpleRAGSystem()
 ## 🤝 Submission
 - Clone CS203_w12_lab
 - Add collaborator `kitt-cmu`
-- Commit changes with clear messages
-  - `basic_chat.py` with message timestamp and clear button
-  - `utils/conversion_tools.py` and modification in `chat_with_search.py` for conversion tools handling
-  - `chat_with_rag.py` `rag_system.py` with relevance score filter for document retrieval
+- Commit changes with clear messages for each task:
+  - **Task 0**: `echo_bot.py` with clear chat button and message counter enhancements
+  - **Task 1**: `basic_chat.py` with message timestamp and clear button
+  - **Task 2**: `utils/conversion_tools.py` and modification in `chat_with_search.py` for conversion tools handling
+  - **Task 3**: `chat_with_rag.py` `rag_system.py` with relevance score filter for document retrieval
 - Push to your github repository
 
 ### Code Style Guidelines
