@@ -237,9 +237,10 @@ class SimpleRAGSystem:
             content = result["content"]
             metadata = result.get("metadata", {})
             doc_id = metadata.get("doc_id", "unknown")
+            score = result.get("score", 0.0)
 
             # Format the context piece
-            context_piece = f"[Source: {doc_id}]\n{content}\n"
+            context_piece = f"[Source: {doc_id}] [Score: {score}]\n{content}\n"
 
             # Check if adding this piece would exceed the limit
             if current_length + len(context_piece) > max_context_length:
