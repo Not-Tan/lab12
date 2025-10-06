@@ -15,6 +15,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 from utils.llm_client import LLMClient, get_available_models
 from utils.search_tools import WebSearchTool, format_search_results
+from utils.conversion_tools import CurrencyConversionTools
 
 def init_session_state():
     """Initialize session state variables"""
@@ -24,6 +25,8 @@ def init_session_state():
         st.session_state.llm_client = None
     if "search_tool" not in st.session_state:
         st.session_state.search_tool = WebSearchTool()
+    if "conversion_tool" not in st.session_state:
+        st.session_state.conversion_tool = CurrencyConversionTools()
 
 
 def get_search_function_schema():
@@ -54,10 +57,20 @@ def execute_search(query: str, num_results: int = 5):
     results = st.session_state.search_tool.search(query, num_results)
     return format_search_results(results)
 
+def execute_conversion(from_currency: str, to_currency: str, amount: float):
+    """Execute currency conversion and return result"""
+    result = st.session_state.conversion_tool.convert_currency(from_currency, to_currency, amount)
+    return json.dumps(result, indent=2)
 
 def handle_tool_calls(message_content: str):
     """Handle potential tool calls in the message"""
     message_lower = message_content.lower()
+    message_upper = message_content.upper()
+
+    convert_triggers = [
+        "convert", "conversion", "exchange rate", "currency", "currencies"
+        
+    ]
 
     # Enhanced tool calling detection
     search_triggers = [
@@ -83,10 +96,16 @@ def handle_tool_calls(message_content: str):
         "what's new", "what happened", "any updates"
     ]
 
+    convert_triggers.extend(st.session_state.conversion_tool.get_all_currencies().keys())
+    convert_triggers.extend(st.session_state.conversion_tool.get_all_currencies().values())
+
     # Check for search triggers
     should_search = any(
         trigger in message_lower for trigger in search_triggers)
 
+    should_convert = any(
+        trigger in message_upper for trigger in convert_triggers)
+    
     # Also check for time-sensitive questions
     time_words = ["today", "now", "current",
                   "latest", "recent", "2024", "2025"]
@@ -98,7 +117,54 @@ def handle_tool_calls(message_content: str):
     if has_time_word and has_question_word:
         should_search = True
 
-    if should_search:
+    if should_convert:
+        # Improved extraction of conversion parameters
+        words = message_content.split()
+        from_currency = None
+        to_currency = None
+        amount = None
+
+        currencies = st.session_state.conversion_tool.get_all_currencies()
+
+        for i, word in enumerate(words):
+            word = word.strip(",.?!")
+            word_clean = word.upper()
+            if word_clean in currencies:
+                if not from_currency:
+                    from_currency = word_clean
+                elif not to_currency and word_clean != from_currency:
+                    to_currency = word_clean
+
+            if(word.isnumeric()):
+                amount = float(word)
+
+        # Default amount to 1 if not specified
+        if from_currency and to_currency and not amount:
+            amount = 1.0
+        if from_currency and to_currency and amount:
+            conversion_result = execute_conversion(
+                from_currency, to_currency, amount)
+            enhanced_prompt = f"""
+            User Query: {message_content}
+            
+            I have performed a currency conversion based on your request:
+            
+            {conversion_result}
+            
+            Please provide a comprehensive answer based on this information.
+            """
+            return enhanced_prompt, True    
+        elif from_currency:
+            enhanced_prompt = f"""
+            User Query: {message_content}
+            
+            I have performed a currency conversion based on your request:
+            Note: Please specify the target currency and amount for conversion.
+            Please provide a comprehensive answer based on this information.
+            """
+            return enhanced_prompt, True 
+
+    elif should_search:
         # Extract search query (improved approach)
         query = message_content
 
