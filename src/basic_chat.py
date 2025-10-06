@@ -8,6 +8,7 @@ import streamlit as st
 import sys
 import os
 from pathlib import Path
+from datetime import datetime
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -89,6 +90,9 @@ def main():
         st.divider()
 
         # Clear chat button
+        if st.button("Clear Chat"):
+            st.session_state.messages.clear()
+            st.rerun()
  
 
         # Model info
@@ -126,12 +130,14 @@ def main():
 
     # Chat input
     if prompt := st.chat_input("Type your message here..."):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": prompt})
 
         # Display user message
         with st.chat_message("user"):
             st.markdown(prompt)
+            st.caption(f"{timestamp}")
 
         # Generate and display assistant response
         with st.chat_message("assistant"):
